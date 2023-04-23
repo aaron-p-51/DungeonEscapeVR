@@ -1,20 +1,3 @@
-{
-	"FileVersion": 3,
-	"EngineAssociation": "4.26",
-	"Category": "",
-	"Description": "",
-	"Modules": [
-		{
-			"Name": "DungeonEscapeVR",
-			"Type": "Runtime",
-			"LoadingPhase": "Default",
-			"AdditionalDependencies": [
-				"Engine"
-			]
-		}
-	],
-	"TargetPlatforms": [
-		"PS4",
-		"WindowsNoEditor"
-	]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:23c559dc73abea6cf3bfc7952edadd95174beeb4ed59404e98a47a8d308e8b98
+size 319
