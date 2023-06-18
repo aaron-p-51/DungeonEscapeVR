@@ -18,6 +18,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerBeginTeleport);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerFinishTeleport);
 
 
+UENUM(BlueprintType)
+enum class ECameraCollisionState : uint8
+{
+	ECCS_FadeOut	UMETA(DisplayName = "FadeOut"),
+	ECCS_FadeIn		UMETA(DisplayName = "FadeIn"),
+	ECCS_NotFading	UMETA(DisplayName = "NotFading")
+};
+
+
 /**
  * Base class for VR player character
  */
@@ -38,14 +47,17 @@ private:
 
 protected:
 
+	/** Room scale center */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	USceneComponent* VRCenter;
 
 private:
 
+	/** Player's view (HMD)*/
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
 	UCameraComponent* CameraComp;
 
+	/** Camera collision detection. When this component starts to overlap with blocking collision CameraComp will fade out blocking player's view */
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
 	USphereComponent* CameraCollisionComp;
 
@@ -54,18 +66,31 @@ private:
 	/* Config */
 	/*******************************************************************/
 
+	/** Amount of degrees player will rotate (left or right) when turning using thumb stick */
 	UPROPERTY(EditDefaultsOnly, Category = "Config")
 	float DegreesOnTurn;
 
+	/** Rate to check for CameraCollisionComp overlapping with blocking collisions */
 	UPROPERTY(EditDefaultsOnly, Category = "Config|PlayerView")
 	float CameraCollisionCheckRate;
 
+	/** Fade out color when camera (players HMD) is overlapping with blocking collision. Prevents player from seeing out of play area */
 	UPROPERTY(EditDefaultsOnly, Category = "Config|PlayerView")
 	FLinearColor CameraCollisionFadeColor;
 
+	/** Fade out color when player is teleporting. Reduce motion sickness */
 	UPROPERTY(EditDefaultsOnly, Category = "Config|Teleport")
 	FLinearColor TeleportCameraFadeColor;
 
+	/** Time in seconds for camera to fade to TeleportCameraFadeColor. Started when Teleprot starts */
+	UPROPERTY(EditDefaultsOnly, Category = "Config|PlayerView")
+	float TeleportCamerFadeOutTime;
+
+	/** Time in seconds for camera to fade out TeleportCameraFadeColor. Started when Teleprot finishes */
+	UPROPERTY(EditDefaultsOnly, Category = "Config|PlayerView")
+	float TeleportCamerFadeInTime;
+
+	/** Total time to teleport. The actual teleport movement will occure over one frame. This time is for the */
 	UPROPERTY(EditDefaultsOnly, Category = "Config|Teleport")
 	float TeleportTime;
 
@@ -86,15 +111,16 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Player")
 	ADVRMotionController* RightMotionController;
 
+
 	/*******************************************************************/
 	/* State */
 	/*******************************************************************/
 
-	/** true as soon as player starts to look for teleport destination. See StartFindTeleportDestination() and FinishFindTeleportDestination() */
+	/** True as soon as player starts to look for teleport destination. See StartFindTeleportDestination() and FinishFindTeleportDestination() */
 	UPROPERTY(VisibleAnywhere, Category = "State|Teleport")
 	bool bWantsToTeleport;
 
-	/** true when player is in process of teleporting. This includes camera fade in and out and character teleporting to new destination */
+	/** True when player is in process of teleporting. This includes camera fade in and out and character teleporting to new destination */
 	UPROPERTY(VisibleAnywhere, Category = "State|Teleport")
 	bool bTeleportInProgress;
 
@@ -109,7 +135,6 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "State|Controllers")
 	bool bUIModeActive;
 
-
 	/** CameraCollisionComp collision detection is run at slower independent rate from frame rate */
 	FTimerHandle TimerHandle_CheckCameraCollision;
 
@@ -119,6 +144,10 @@ private:
 	/** Is CameraCollisionComp overlapping with another actor */
 	UPROPERTY(VisibleAnywhere, Category = "State|PlayerView")
 	bool bCameraCollisionOverlapping;
+
+	ECameraCollisionState CameraCollisionState;
+
+	float CollisionCameraFadeAmount;
 
 
 	/*******************************************************************/
@@ -193,7 +222,7 @@ public:
 	void SetDesiredTeleportLocation(FVector Location) { DesiredTeleportLocation = Location; }
 
 	/**
-	 * Begin the process of teleporting. Teleporting consists for camera fade out, moving player to DesiredTeleportLocation, and
+	 * Begin the process of teleporting. Teleporting consists of camera fade out, moving player to DesiredTeleportLocation, and
 	 * fading the camera back in. Teleporting happens in one of three ways.
 	 *	1. Player teleports to pause menu location
 	 *	2. Player teleports from pause menu location
@@ -216,8 +245,6 @@ private:
 	void FinishTeleport();
 
 
-
-
 	/*******************************************************************/
 	/* Movement */
 	/*******************************************************************/
@@ -231,6 +258,8 @@ private:
 	 * need to call this method every frame
 	 */
 	void CheckForCameraCollision();
+
+	void CameraCollisionFade(float DeltaTime);
 
 protected:
 

@@ -96,7 +96,7 @@ void ADInteractableActor::ProcessShowMeshOutline()
 {
 	if (InteractionAlertTrigger)
 	{
-		bool UnobstructedView = UnobstructedViewToInteractionAlertTrigger();
+		const bool UnobstructedView = UnobstructedViewToInteractionAlertTrigger();
 		if (UnobstructedView && !bOutlineEnabled && !bPlayerCharacterTeleporting && !bIsPickedUp)
 		{
 			SetEnableMeshCompOutline(true);
@@ -147,7 +147,7 @@ void ADInteractableActor::SetEnableMeshCompOutline(bool Enable)
 	{
 		MeshComp->SetRenderCustomDepth(Enable);
 
-		int32 StencilValue = Enable ? ENABLE_OUTLINE_STENCIL : DISABLE_OUTLINE_STENCIL;
+		const int32 StencilValue = Enable ? ENABLE_OUTLINE_STENCIL : DISABLE_OUTLINE_STENCIL;
 		MeshComp->SetCustomDepthStencilValue(StencilValue);
 	}
 

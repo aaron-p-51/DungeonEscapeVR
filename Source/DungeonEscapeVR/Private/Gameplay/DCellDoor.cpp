@@ -73,7 +73,7 @@ void ADCellDoor::ProcessDoorOpenCloseState()
 {
 	if (CellDoorState == ECellDoorState::ECDS_Opening || CellDoorState == ECellDoorState::ECDS_Closing) return;
 
-	float Weight;
+	float Weight = 0.f;
 
 #if WITH_EDITOR
 
@@ -106,7 +106,6 @@ void ADCellDoor::ProcessDoorOpenCloseState()
 float ADCellDoor::CalculateTotalWeightOnTriggers() const
 {
 	float WeightOnTriggers = 0.f;
-
 	for (const auto& Trigger : CellDoorTriggers)
 	{
 		WeightOnTriggers += Trigger->GetWeightOnTrigger();
@@ -152,9 +151,9 @@ void ADCellDoor::OnUpdateCellDoorHeight(float CellDoorHeightOffset)
 	if (!CellDoorStaticMeshComp) return;
 
 	// Change CellDoor height based on CellDoorHeightOffset in relation to InitialCellDoorHeight
-	FVector CurrentCellDoorLocation = CellDoorStaticMeshComp->GetComponentLocation();
-	float NewCellDoorHeight = CellDoorHeightOffset + InitialCellDoorHeight;
-	FVector NewCellDoorLocation = FVector(CurrentCellDoorLocation.X, CurrentCellDoorLocation.Y, NewCellDoorHeight);
+	const FVector CurrentCellDoorLocation = CellDoorStaticMeshComp->GetComponentLocation();
+	const float NewCellDoorHeight = CellDoorHeightOffset + InitialCellDoorHeight;
+	const FVector NewCellDoorLocation = FVector(CurrentCellDoorLocation.X, CurrentCellDoorLocation.Y, NewCellDoorHeight);
 
 	CellDoorStaticMeshComp->SetWorldLocation(NewCellDoorLocation);
 }
