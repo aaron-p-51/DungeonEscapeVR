@@ -23,11 +23,11 @@ ADCellDoor::ADCellDoor()
 	CellDoorStaticMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CellDoorStaticMesh"));
 	CellDoorStaticMeshComp->SetupAttachment(GetRootComponent());
 
-	BoxComp = CreateDefaultSubobject<UBoxComponent>(TEXT("BlockingBoxComp"));
-	BoxComp->SetupAttachment(GetRootComponent());
-	BoxComp->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
-	BoxComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	BoxComp->SetCanEverAffectNavigation(true);
+	CellDoorBlockingCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("BlockingBoxComp"));
+	CellDoorBlockingCollision->SetupAttachment(GetRootComponent());
+	CellDoorBlockingCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+	CellDoorBlockingCollision->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	CellDoorBlockingCollision->SetCanEverAffectNavigation(true);
 
 	CellDoorState = ECellDoorState::ECDS_Closed;
 
@@ -71,6 +71,7 @@ void ADCellDoor::Tick(float DeltaTime)
 
 void ADCellDoor::ProcessDoorOpenCloseState()
 {
+	// Cell door will always complete the process of opening or closing
 	if (CellDoorState == ECellDoorState::ECDS_Opening || CellDoorState == ECellDoorState::ECDS_Closing) return;
 
 	float Weight = 0.f;
@@ -133,13 +134,13 @@ void ADCellDoor::CloseCellDoor()
 	OnCellDoorStateChange.Broadcast(this, CellDoorState);
 
 	// Block player and PhysicsBodies (CellDoorKeys) from passing through the cell door
-	if (BoxComp)
+	if (CellDoorBlockingCollision)
 	{
-		BoxComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Block);
-		BoxComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
-		BoxComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Block);
-		BoxComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
-		BoxComp->SetCanEverAffectNavigation(true);
+		CellDoorBlockingCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Block);
+		CellDoorBlockingCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+		CellDoorBlockingCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Block);
+		CellDoorBlockingCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+		CellDoorBlockingCollision->SetCanEverAffectNavigation(true);
 	}
 
 	BP_CloseCellDoor();
@@ -161,18 +162,18 @@ void ADCellDoor::OnUpdateCellDoorHeight(float CellDoorHeightOffset)
 
 void ADCellDoor::OnFinishCellDoorOpened()
 {
+	// Allow player and PhysicsBodies (CellDoorKeys) to pass through the cell door
+	if (CellDoorBlockingCollision)
+	{
+		CellDoorBlockingCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Ignore);
+		CellDoorBlockingCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+		CellDoorBlockingCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+		CellDoorBlockingCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Ignore);
+		CellDoorBlockingCollision->SetCanEverAffectNavigation(false);
+	}
+
 	CellDoorState = ECellDoorState::ECDS_Opened;
 	OnCellDoorStateChange.Broadcast(this, CellDoorState);
-
-	// Allow player and PhysicsBodies (CellDoorKeys) to pass through the cell door
-	if (BoxComp)
-	{
-		BoxComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Ignore);
-		BoxComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
-		BoxComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-		BoxComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Ignore);
-		BoxComp->SetCanEverAffectNavigation(false);
-	}
 }
 
 
@@ -181,4 +182,3 @@ void ADCellDoor::OnFinishedCellDoorClosed()
 	CellDoorState = ECellDoorState::ECDS_Closed;
 	OnCellDoorStateChange.Broadcast(this, CellDoorState);
 }
-
