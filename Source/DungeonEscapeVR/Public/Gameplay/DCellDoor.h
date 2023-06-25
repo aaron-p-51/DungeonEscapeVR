@@ -27,12 +27,13 @@ enum class ECellDoorState : uint8
 };
 
 
-/** Decalre delegate for CellDoorState change */
+/** Declare delegate for CellDoorState change */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCellDoorStateChange, AActor*, CellDoor, ECellDoorState, NewState);
 
 
 /**
- * Base class for cell doors
+ * Base class for cell doors. Cell doors will prevent player from passing until weight on the cell door triggers exceeds weight limit.
+ * The process of opening and closing cell doors is driven via time line in derived blueprint. VFX and SFX are spawned in derived blueprint.
  */
 UCLASS()
 class DUNGEONESCAPEVR_API ADCellDoor : public AActor
