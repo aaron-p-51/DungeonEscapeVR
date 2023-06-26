@@ -17,7 +17,7 @@ class USphereComponent;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerBeginTeleport);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerFinishTeleport);
 
-
+/** Camera will fade out when moving into blocking collisions. States for camera fade out */
 UENUM(BlueprintType)
 enum class ECameraCollisionState : uint8
 {
@@ -35,9 +35,57 @@ class DUNGEONESCAPEVR_API ADVRPlayerCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-/**
- * Members
- */
+public:
+
+	// Sets default values for this character's properties
+	ADVRPlayerCharacter();
+
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
+	// Called to bind functionality to input
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	/**
+	 * Sets bUIModeActive. Used to store initial state to initialize MotionControllers when they are spawned.
+	 * Note for this game design only the RightMotionController will ever be set into UIMode. Functionality is already
+	 * in place if LeftMotionControler is the desired act in UIMode state.
+	 */
+	void SetUIModeActive(bool Active);
+
+	/** Keep center of room scale in the same location. CameraComp and CapsuleComponent will move and player moves around play area */
+	void AlignRootToVRRoot();
+
+	/** Get the current rotation player is looking. Will get CameraComp's rotation */
+	FRotator GetPlayerViewRotation() const;
+
+	/**
+	 * Manually set the desired teleport location. Use with caution. Normal teleport destination should be set from calling StartFindTeleportDestination,
+	 * followed by FinishFindTeleportDestination. This will filter out invalid teleport destinations using MotionControllers
+	 */
+	void SetDesiredTeleportLocation(FVector Location) { DesiredTeleportLocation = Location; }
+
+	/**
+	 * Begin the process of teleporting. Teleporting consists of camera fade out, moving player to DesiredTeleportLocation, and
+	 * fading the camera back in. Teleporting happens in one of three ways.
+	 *	1. Player teleports to pause menu location
+	 *	2. Player teleports from pause menu location
+	 *	3. Player teleports to DesiredTeleportLocation found by MotionControllers
+	 *
+	 * The teleport type is determined from bInPauseMenu and TeleportToPauseMenu param
+	 */
+	void BeginTeleport(bool TeleportToPauseMenu);
+
+
+	/** Helper function for fade camera in and out while teleporting */
+	void StartTeleportCameraFade(float FromAlpha, float ToAlpha, float Time);
+
+
+protected:
+
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
 
 private:
 
@@ -45,13 +93,9 @@ private:
 	/* Components */
 	/*******************************************************************/
 
-protected:
-
 	/** Room scale center */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = true))
 	USceneComponent* VRCenter;
-
-private:
 
 	/** Player's view (HMD)*/
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
@@ -78,6 +122,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Config|PlayerView")
 	FLinearColor CameraCollisionFadeColor;
 
+	/** Rate to fade camera on and out when camera collision is detected. Higher values will fade the camera faster */
+	UPROPERTY(EditAnywhere, Category = "Config|PlayerView")
+	float CameraCollisionFadeRate;
+
 	/** Fade out color when player is teleporting. Reduce motion sickness */
 	UPROPERTY(EditDefaultsOnly, Category = "Config|Teleport")
 	FLinearColor TeleportCameraFadeColor;
@@ -90,18 +138,20 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Config|PlayerView")
 	float TeleportCamerFadeInTime;
 
-	/** Total time to teleport. The actual teleport movement will occure over one frame. This time is for the */
+	/** Total time to teleport in game. The actual teleport movement will occur over one frame. This time includes camera fade in and out time */
 	UPROPERTY(EditDefaultsOnly, Category = "Config|Teleport")
 	float TeleportTime;
 
+	/** Total time to teleport to pause menu. The actual teleport movement will occur over one frame. This time includes camera fade in and out time */
 	UPROPERTY(EditDefaultsOnly, Category = "Config|Teleport")
 	float TeleportToPauseTime;
 
-
+	
 	/*******************************************************************/
 	/* Motion Controllers */
 	/*******************************************************************/
 
+	/** Class for player's hand controllers (Motion Controllers). Two controllers will be spawned one for left and one for right hand */
 	UPROPERTY(EditDefaultsOnly, Category = "Player")
 	TSubclassOf<ADVRMotionController> MotionControllerClass;
 
@@ -145,8 +195,10 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "State|PlayerView")
 	bool bCameraCollisionOverlapping;
 
+	/** Current CameraCollisonState. Will change when CameraCollisionComp overlaps with a collision that would block pawn trace */
 	ECameraCollisionState CameraCollisionState;
 
+	/** Current amount of camera fade will be clamped between 0 and 1 */
 	float CollisionCameraFadeAmount;
 
 
@@ -158,10 +210,8 @@ private:
 	UPROPERTY()
 	APlayerCameraManager* PlayerCameraManager;
 
-
-protected:
-
-	UPROPERTY(BlueprintReadOnly)
+	/** Current location to teleport to can either be set from teleport location from LeftMotionController or from being set directly from SetDesiredTeleportLocation() */
+	UPROPERTY(BlueprintReadOnly, Category = "State|Teleport", meta = (AllowPrivateAccess = true))
 	FVector DesiredTeleportLocation;
 
 
@@ -173,64 +223,20 @@ public:
 	UPROPERTY()
 	FOnPlayerFinishTeleport OnPlayerFinishTeleport;
 
-/**
- * Methods
- */
-public:
-
-	// Sets default values for this character's properties
-	ADVRPlayerCharacter();
-
 
 	/*******************************************************************/
-	/* Configuration */
+	/* Setup */
 	/*******************************************************************/
-
-protected:
-
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 
 private:
 
 	/** Spawn Motion Controllers of type MotionControllerClass. Sets and configures initial state of LeftMotionController and RightMotionController */
 	void SpawnMotionControllers();
 
-public:
-
-	/**
-	 * Sets bUIModeActive. Used to store initial state to initialize MotionControllers when they are spawned.
-	 * Note for this game design only the RightMotionController will ever be set into UIMode. Functionality is already
-	 * in place if LeftMotionControler is the desired act in UIMode state.
-	 */
-	void SetUIModeActive(bool Active);
-
 
 	/*******************************************************************/
 	/* Teleport */
 	/*******************************************************************/
-
-	/** Helper function for fade camera in and out while teleporting */
-	void StartTeleportCameraFade(float FromAlpha, float ToAlpha, float Time);
-
-public:
-
-	/**
-	 * Manually set the desired teleport location. Use with caution. Normal teleport destination should be set from calling StartFindTeleportDestination,
-	 * followed by FinishFindTeleportDestination. This will filter out invalid teleport destinations using MotionControllers
-	 */
-	void SetDesiredTeleportLocation(FVector Location) { DesiredTeleportLocation = Location; }
-
-	/**
-	 * Begin the process of teleporting. Teleporting consists of camera fade out, moving player to DesiredTeleportLocation, and
-	 * fading the camera back in. Teleporting happens in one of three ways.
-	 *	1. Player teleports to pause menu location
-	 *	2. Player teleports from pause menu location
-	 *	3. Player teleports to DesiredTeleportLocation found by MotionControllers
-	 * 
-	 * The teleport type is determined from bInPauseMenu and TeleportToPauseMenu param
-	 */
-	void BeginTeleport(bool TeleportToPauseMenu);
 
 private:
 
@@ -240,7 +246,6 @@ private:
 	void SetupTeleportFromPauseMenuLocation();
 	/** Setup camera fade to teleport */
 	void SetupTeleport();
-
 	/** Move player to DesiredTeleportLocation, and fade camera back in. Alert ADVRPlayerController if this teleport was to the pause menu location */
 	void FinishTeleport();
 
@@ -249,9 +254,6 @@ private:
 	/* Movement */
 	/*******************************************************************/
 	
-	/** Keep center of room scale in the same location. CameraComp and CapsuleComponent will move and player moves around play area */
-	void AlignRootToVRRoot();
-
 	/**
 	 * As player moves around in room scale setup check for collisions in game. If in game collisions are detected, ie walls, then
 	 * fade out camera. Prevents motion sickness. This method call rate can be adjusted via CameraCollisionCheckRate. There is no
@@ -259,36 +261,16 @@ private:
 	 */
 	void CheckForCameraCollision();
 
+	/** 
+	 * Fade players visibility. Prevents player from looking through blocking collisions while not inducing motion sickness. Camera will Adjust camera fade amount
+	 * as set CameraCollisionFadeState when fade amount reaches full fade in or fade out amount
+	*/
 	void CameraCollisionFade(float DeltaTime);
-
-protected:
-
-	/** Start camera fade to TeleportCameraFadeColor, see derived BP to adjust rate via timeline */
-	UFUNCTION(BlueprintImplementableEvent)
-	void BP_CollisionStartCameraFade();
-
-	/** Start camera fade, see derived BP to adjust rate via timeline */
-	UFUNCTION(BlueprintImplementableEvent)
-	void BP_CollisionStopCameraFade();
-
-	UFUNCTION(BlueprintPure)
-	FLinearColor GetCameraCollisionFadeColor() const { return CameraCollisionFadeColor; }
-
-public:
-
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
-	/** Get the current rotation player is looking. Will get CameraComp's rotation */
-	FRotator GetPlayerViewRotation() const;
 
 
 	/*******************************************************************/
 	/* Input */
 	/*******************************************************************/
-
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 private:
 
