@@ -45,6 +45,24 @@ public:
 	 */
 	bool GetIsPickedUp() const { return bIsPickedUp; }
 
+	/** Set MeshComp outline visibility. Outline is achieved via setting CustomDepthStencile values.  */
+	void SetEnableMeshCompOutline(bool Enable);
+
+	/**
+     *  Check to see if InteractionAlertTrigger has line of sight to this Actor.
+     *  InteractionAlertTrigger will be set from OnInteractionAlertSphereCompBeginOverlap and OnInteractionAlertSphereCompEndOverlap
+     */
+	bool UnobstructedViewToInteractionAlertTrigger() const;
+
+	/** Get the InteractionAlertTrigger. Will be set when overlapping with InteractionAlertSphereComp */
+	UPrimitiveComponent* GetInteractionAlertTrigger() const { return InteractionAlertTrigger; }
+
+
+protected:
+
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
 
 private:
 
@@ -89,31 +107,10 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "State|Interaction")
 	bool bIsPickedUp;
 
-
-/**
- * Methods
- */
-
-public:
-
-	
-
-protected:
-
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
 private:
 
 	/** Setup. Player teleport state will determine if MeshComp outlines are shown. See OnPlayerBeginTeleport, and OnPlayerFinishTeleport */
 	void BindPlayerPawnTeleportEvents();
-
-
-
-
-public:
-
-
 
 
 	/*******************************************************************/
@@ -136,17 +133,7 @@ private:
 	UFUNCTION()
 	void OnPlayerFinishTeleport();
 
-	/**
-	 *  Check to see if InteractionAlertTrigger has line of sight to this Actor.
-	 *  InteractionAlertTrigger will be set from OnInteractionAlertSphereCompBeginOverlap and OnInteractionAlertSphereCompEndOverlap
-	 */
-	bool UnobstructedViewToInteractionAlertTrigger() const;
-
-	/** Determine of MeshComp outline should be shown */
+	/** Determine if MeshComp outline should be shown */
 	void ProcessShowMeshOutline();
-
-	/** Set MeshComp outline visibility. Outline is achieved via setting CustomDepthStencile values.  */
-	void SetEnableMeshCompOutline(bool Enable);
-
 
 };
