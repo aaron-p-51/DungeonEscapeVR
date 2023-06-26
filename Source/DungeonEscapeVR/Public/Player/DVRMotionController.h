@@ -74,6 +74,12 @@ public:
 	 */
 	bool GetCurrentTeleportDestinationMarketLocation(FVector& OutLocation);
 
+	/** Clear all points on TeleportSplinePath. Will not delete any SplineMeshComponents from TeleportMeshObjectPool */
+	void ClearTeleportPath();
+
+	/** Set visibility of TeleportDestinationMarker */
+	void ShowTeleportDestination(bool bShow);
+
 
 	/*******************************************************************/
 	/* Grabbing */
@@ -144,6 +150,28 @@ public:
 	void TriggerPulled() const;
 	/** Trigger mouse click release via WidgetInteractionComp */
 	void TriggerReleased() const;
+
+	/*******************************************************************/
+	/* Interaction */
+	/*******************************************************************/
+
+	/** Play haptic, player feedback, on motion controller */
+	void PlayHapticEffect(UHapticFeedbackEffect_Base* HapticEffect, float Intensity = 1.f) const;
+
+	/**	If CurrentGrabedActor is a ADInteractableActor alert state of GrabState  */
+	void AlertGrabbedActorOfGrabState(EGrabState State) const;
+
+	/** Check for overlapping physics actors. Update Haptic feedback and GrabState */
+	void UpdateInteractionWithOverlappingActors();
+
+	/** Get the nearest Actor Implement physics overlapping with InteractionSphereComp */
+	AActor* GetNearestOverlappingPhysicsActor() const;
+
+	/** If InteractionSphere is currently overlapping an Actor implementing physics try to attach to PhysicsConstraintComp */
+	bool TryAttachOverlappedActorToPhysicsHandle();
+
+	/** Set MeshComp to MotionControllerComp location. Movement is swept to location.  */
+	void UpdateMotionControllerTransform();
 
 
 protected:
@@ -264,7 +292,7 @@ private:
 	UPROPERTY()
 	TArray<USplineMeshComponent*> TeleportMeshObjectPool;
 
-	/** Current GrabStat of this DVRMotionController */
+	/** Current GrabState of this DVRMotionController */
 	UPROPERTY(VisibleAnywhere, Category = "State|Interaction")
 	EGrabState GrabState;
 
@@ -312,39 +340,14 @@ private:
 	/** Update TeleportSplinePath for all points on Path, enable visibility */
 	void UpdateTeleportSpline(const TArray<FVector>& Path);
 
-	/** Clear all points on TeleportSplinePath. Will not delete any SplineMeshComponents from TeleportMeshObjectPool */
-	void ClearTeleportPath();
-
-	/** Set visibility of TeleportDestinationMarker */
-	void ShowTeleportDestination(bool bShow);
-
-
 
 	/*******************************************************************/
 	/* Interaction */
 	/*******************************************************************/
 	
-	/** Check for overlapping physics actors. Update Haptic feedback and GrabState */
-	void UpdateInteractionWithOverlappingActors();
-
-	/** Get the nearest Actor Implement physics overlapping with InteractionSphereComp */
-	AActor* GetNearestOverlappingPhysicsActor() const;
-
-	/** If InteractionSphere is currently overlapping an Actor implementing physics try to attach to PhysicsConstraintComp */
-	bool TryAttachOverlappedActorToPhysicsHandle();
-
-	/** Set MeshComp to MotionControllerComp location. Movement is swept to location.  */
-	void UpdateMotionControllerTransform();
-
 	/** Update GrabState state for overlapping physics actors
 	 * @param bIsOverlappingActorToGrab is there an actor currently overlapping InteractionSphereComp
 	 */
 	void UpdateGrabState(bool bIsOverlappingActorToGrab);
-
-	/** Play haptic, player feedback, on motion controller */
-	void PlayHapticEffect(UHapticFeedbackEffect_Base* HapticEffect, float Intensity = 1.f) const;
-
-	/**	If CurrentGrabedActor is a ADInteractableActor alert state of GrabState  */
-	void AlertGrabbedActorOfGrabState(EGrabState State) const;
 
 };
