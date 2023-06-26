@@ -47,10 +47,110 @@ class DUNGEONESCAPEVR_API ADVRMotionController : public AActor
 {
 	GENERATED_BODY()
 	
+public:
 
-/**
-* Members
-*/
+	// Sets default values for this actor's properties
+	ADVRMotionController();
+
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
+	/*******************************************************************/
+	/* Teleporting */
+	/*******************************************************************/
+
+	/** Start looking for teleport position. UpdateTeleportDestination will be called every frame until StopFindTeleportDestination is called */
+	UFUNCTION()
+	void StartFindTeleportDestination();
+
+	/* Stop looking for valid teleport destination position*/
+	UFUNCTION()
+	void StopFindTeleportDestination();
+
+	/** Get the current teleport destination location.
+	 *
+	 * @param Location will be overwritten to teleport destination
+	 * @return true if location was set and is value. Do not teleport to Location param if returns false
+	 */
+	bool GetCurrentTeleportDestinationMarketLocation(FVector& OutLocation);
+
+
+	/*******************************************************************/
+	/* Grabbing */
+	/*******************************************************************/
+
+	/** Check if this MotionController is currently grabbing another actor
+	 * @returns true if currently grabbing another actor
+	 */
+	bool IsGrabbingActor() const { return CurrentGrabedActor != nullptr; }
+
+	/**
+	 * Get this DVRMotionController's currently grabbed actor
+	 * @returns currently grabbed actor, returns nullptr if no actor is currently grabbed
+	 */
+	AActor* GetCurrentGrabbedActor() const { return CurrentGrabedActor; }
+
+	/**
+	 * Get current grab state. Grab state is only dependent on current player input. Does not depend on
+	 * if an actor is currently grabbed or not
+	 * 
+	 * @see GetCurrentGrabbedActor()
+	 */
+	UFUNCTION(BlueprintPure)
+	EGrabState GetGrabState() const { return GrabState; }
+
+	/*******************************************************************/
+	/* Setup */
+	/*******************************************************************/
+
+	/** Set hand, left or right. Hand relative rotation will be set
+	 * @note only EControllerHand::Left and EControllerHand::Right are valid
+	 */
+	void SetHand(EControllerHand Hand);
+
+	/** Get this controller's hand
+	 * @returns this controllers hand. Can only return EControllerHand::Left or EControllerHand::Right
+	 */
+	UFUNCTION(BlueprintPure)
+	EControllerHand GetControllerHand() const { return ControllerHand; }
+
+	/** Set Controller Mode for Game or UI mode.
+	 * Setting to UI mode will enable WidgetInteractionComp
+	 * Setting to Game will enable teleporting and grabbing
+	 */
+	UFUNCTION(BlueprintCallable)
+	void SetControllerMode(EControllerMode Mode);
+
+	/** Get the current controller mode */
+	UFUNCTION(BlueprintPure)
+	EControllerMode GetControllerMode() const { return ControllerMode; }
+
+	/** Set to other hands ADVRMotionController */
+	void PairController(ADVRMotionController* Controller) { OtherHandMotionController = Controller; }
+
+	/** Set ADVRPlayerCharacter for player using this motion cotroller */
+	void SetVRPlayerCharacter(ADVRPlayerCharacter* VRPlayerCharacter) { OwnerVRPlayerCharacter = VRPlayerCharacter; }
+
+	/*******************************************************************/
+	/* Input */
+	/*******************************************************************/
+
+	/** Activate grab state. Attempt to Overlapping interactable actor */
+	void Grab();
+	/** Activate release state. Release currently grabbed actor if one is grabbed */
+	void Release();
+
+	/** Trigger mouse click and via WidgetInteractionComp */
+	void TriggerPulled() const;
+	/** Trigger mouse click release via WidgetInteractionComp */
+	void TriggerReleased() const;
+
+
+protected:
+
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
 
 private:
 
@@ -58,21 +158,21 @@ private:
 	/* Components */
 	/*******************************************************************/
 
+	//UPROPERTY(EditDefaultsOnly, Category = "Components")
+	//USceneComponent* RootComp;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
-	USceneComponent* RootComp;
+	UMotionControllerComponent* MotionControllerComp;
 
 	/** VR Hand Mesh */
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
 	USkeletalMeshComponent* MeshComp;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Components")
-	UMotionControllerComponent* MotionControllerComp;
-
 	/** Menu widget interaction */
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UWidgetInteractionComponent* WidgetInteractionComp;
 
-	/** Sphere for interacting with interactable actors */
+	/** Sphere for interacting with interactable actors. */
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
 	USphereComponent* InteractionSphereComp;
 
@@ -93,6 +193,7 @@ private:
 	/* Configuration */
 	/*******************************************************************/
 
+	/** Current Controller Mode */
 	UPROPERTY(EditDefaultsOnly, Category = "Config")
 	EControllerMode ControllerMode;
 
@@ -100,6 +201,7 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Config|HandMesh")
 	float HandScale;
 
+	/** Hand offset from UMotionControllerComponent. MeshComp is swept to prevent going through blocing collisions */
 	UPROPERTY(EditDefaultsOnly, Category = "Config|HandMesh")
 	FVector RelativeHandPositionOffset;
 
@@ -142,7 +244,7 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "State")
 	ADVRPlayerCharacter* OwnerVRPlayerCharacter;
 
-	/** Reference to other hands DVRMotionController */
+	/** Players other hand DVRMotionController */
 	UPROPERTY(VisibleAnywhere, Category = "State")
 	ADVRMotionController* OtherHandMotionController;
 
@@ -158,6 +260,7 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "State|Teleport")
 	FVector TeleportDestination;
 
+	/** Cache meshes placed along spline showing path to teleport location  */
 	UPROPERTY()
 	TArray<USplineMeshComponent*> TeleportMeshObjectPool;
 
@@ -174,24 +277,9 @@ private:
 	AActor* PreviousOverlappedPhysicsActor;
 
 
-/**
- * Methods
- */
-
- public:
-
-	 // Sets default values for this actor's properties
-	 ADVRMotionController();
-
-	 // Called every frame
-	 virtual void Tick(float DeltaTime) override;
-
-
 	/*******************************************************************/
 	/* Teleport */
 	/*******************************************************************/
-
-private:
 
 	/**
 	 * Update the current teleport destination. Teleport destination is based on a predict projectile path. If updated destination is valid
@@ -213,7 +301,7 @@ private:
 	bool FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation);
 
 	/** Set Actors to be ignored for teleport predict projectile path collision detection  */
-	void SetIgnoreActorsForTeleportDestination(TArray<AActor*>& IgnoreActors);
+	void SetIgnoreActorsForTeleportDestination(TArray<AActor*>& OutIgnoreActors);
 
 	/**
 	 * Set SplineMeshComponent locations along path generated from FindTeleportDesination. Points in Path param are added as SplineMeshComponents to TeleportSplinePath
@@ -228,30 +316,16 @@ private:
 	void ClearTeleportPath();
 
 	/** Set visibility of TeleportDestinationMarker */
-	void ShowTeleportDestination(bool Show);
+	void ShowTeleportDestination(bool bShow);
 
-public:
-
-	/** Start looking for teleport position. UpdateTeleportDestination will be called every frame until StopFindTeleportDestination is called */
-	UFUNCTION()
-	void StartFindTeleportDestination();
-
-	/* Stop looking for valid teleport destination position*/
-	UFUNCTION()
-	void StopFindTeleportDestination();
-
-	/** Get the current teleport destination location. Only use location if this method returns true */
-	bool GetCurrentTeleportDestinationMarketLocation(FVector& Location);
 
 
 	/*******************************************************************/
 	/* Interaction */
 	/*******************************************************************/
-
-private:
 	
 	/** Check for overlapping physics actors. Update Haptic feedback and GrabState */
-	void UpdateInteractionFeedback();
+	void UpdateInteractionWithOverlappingActors();
 
 	/** Get the nearest Actor Implement physics overlapping with InteractionSphereComp */
 	AActor* GetNearestOverlappingPhysicsActor() const;
@@ -266,60 +340,9 @@ private:
 	void UpdateGrabState(AActor* CurrentOverlappedPhysicsActor);
 
 	/** Play haptic, player feedback, on motion controller */
-	void PlayHapticEffect(UHapticFeedbackEffect_Base* HapticEffect, float Intensity = 1.f);
+	void PlayHapticEffect(UHapticFeedbackEffect_Base* HapticEffect, float Intensity = 1.f) const;
 
 	/**	If CurrentGrabedActor is a ADInteractableActor alert state of GrabState  */
 	void AlertGrabbedActorOfGrabState(EGrabState State) const;
-
-public:
-
-	/** Public methods for MotionController Interaction */
-	bool IsGrabbingActor() const { return CurrentGrabedActor != nullptr; }
-	AActor* GetCurrentGrabbedActor() const { return CurrentGrabedActor; }
-	UFUNCTION(BlueprintCallable)
-	EGrabState GetGrabState() const { return GrabState; }
-
-
-	/*******************************************************************/
-	/* Configuration */
-	/*******************************************************************/
-
-protected:
-
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-public:
-
-	/** Set hand, left or right. Hand relative rotation will be set */
-	void SetHand(EControllerHand Hand);
-
-	UFUNCTION(BlueprintCallable)
-	EControllerHand GetControllerHand() const { return ControllerHand; }
-
-	/** Set Controller Mode for Game or UI mode. Setting to UI mode will enable WidgetInteractionComp */
-	UFUNCTION(BlueprintCallable)
-	void SetControllerMode(EControllerMode Mode);
-
-	EControllerMode GetControllerMode() const { return ControllerMode; }
-
-	/** Set reference to other hands ADVRMotionController */
-	void PairController(ADVRMotionController* Controller) { OtherHandMotionController = Controller; }
-
-	void SetVRPlayerCharacter(ADVRPlayerCharacter* VRPlayerCharacter) { OwnerVRPlayerCharacter = VRPlayerCharacter; }
-
-	/*******************************************************************/
-	/* Input */
-	/*******************************************************************/
-
-	/** Activate grab state. Attempt to Overlapping interactable actor */
-	void Grab();
-	/** Activate release state. Release currently grabbed actor */
-	void Release();
-
-	/** Trigger mouse click and via WidgetInteractionComp */
-	void TriggerPulled();
-	/** Trigger mouse click release via WidgetInteractionComp */
-	void TriggerReleased();
 
 };

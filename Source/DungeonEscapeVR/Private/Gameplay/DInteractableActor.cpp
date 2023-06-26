@@ -96,12 +96,12 @@ void ADInteractableActor::ProcessShowMeshOutline()
 {
 	if (InteractionAlertTrigger)
 	{
-		const bool UnobstructedView = UnobstructedViewToInteractionAlertTrigger();
-		if (UnobstructedView && !bOutlineEnabled && !bPlayerCharacterTeleporting && !bIsPickedUp)
+		const bool bUnobstructedView = UnobstructedViewToInteractionAlertTrigger();
+		if (bUnobstructedView && !bOutlineEnabled && !bPlayerCharacterTeleporting && !bIsPickedUp)
 		{
 			SetEnableMeshCompOutline(true);
 		}
-		else if ((!UnobstructedView && bOutlineEnabled) || bPlayerCharacterTeleporting || bIsPickedUp)
+		else if ((!bUnobstructedView && bOutlineEnabled) || bPlayerCharacterTeleporting || bIsPickedUp)
 		{
 			SetEnableMeshCompOutline(false);
 		}
@@ -115,7 +115,7 @@ void ADInteractableActor::ProcessShowMeshOutline()
 
 bool ADInteractableActor::UnobstructedViewToInteractionAlertTrigger() const
 {
-	bool UnobstructedView = true;
+	bool bUnobstructedView = true;
 	if (InteractionAlertTrigger && InteractionAlertSphereComp)
 	{
 		TArray<AActor*> IgnoreActors;
@@ -124,7 +124,7 @@ bool ADInteractableActor::UnobstructedViewToInteractionAlertTrigger() const
 		IgnoreActors.Add(InteractionAlertSphereComp->GetOwner());
 		FHitResult HitResult;
 
-		UnobstructedView = !UKismetSystemLibrary::LineTraceSingle(
+		bUnobstructedView = !UKismetSystemLibrary::LineTraceSingle(
 			GetWorld(),
 			InteractionAlertSphereComp->GetComponentLocation(),
 			InteractionAlertTrigger->GetComponentLocation(),
@@ -137,7 +137,7 @@ bool ADInteractableActor::UnobstructedViewToInteractionAlertTrigger() const
 		);
 	}
 	
-	return UnobstructedView;
+	return bUnobstructedView;
 }
 
 

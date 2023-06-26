@@ -92,7 +92,7 @@ void ADVRMotionController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	UpdateMotionControllerTransform();
-	UpdateInteractionFeedback();
+	UpdateInteractionWithOverlappingActors();
 
 	if (bLookForTeleportDestination)
 	{
@@ -104,6 +104,8 @@ void ADVRMotionController::Tick(float DeltaTime)
 /*******************************************************************/
 /* Interaction */
 /*******************************************************************/
+
+
 void ADVRMotionController::UpdateMotionControllerTransform()
 {
 	if (MeshComp)
@@ -113,7 +115,7 @@ void ADVRMotionController::UpdateMotionControllerTransform()
 }
 
 
-void ADVRMotionController::UpdateInteractionFeedback()
+void ADVRMotionController::UpdateInteractionWithOverlappingActors()
 {
 	AActor* CurrentOverlappedPhysicsActor = GetNearestOverlappingPhysicsActor();
 
@@ -134,12 +136,14 @@ AActor* ADVRMotionController::GetNearestOverlappingPhysicsActor() const
 	AActor* NearestActor = nullptr;
 	if (InteractionSphereComp)
 	{
-		FVector InteractionSphereLocation = InteractionSphereComp->GetComponentLocation();
+		const FVector InteractionSphereLocation = InteractionSphereComp->GetComponentLocation();
 		float NearestActorDistance = MAX_FLT;
 		TSet<AActor*> OverlappingActors;
 
 		InteractionSphereComp->GetOverlappingActors(OverlappingActors);
 
+		// There may be more than one actor overlapping InteractionSphereComp. Get the actor whose root component location is the closes
+		// to InteractionSphereComp's location
 		for (const auto& Actor : OverlappingActors)
 		{
 			if (Actor->GetRootComponent()->IsSimulatingPhysics())
@@ -158,12 +162,11 @@ AActor* ADVRMotionController::GetNearestOverlappingPhysicsActor() const
 }
 
 
-void ADVRMotionController::PlayHapticEffect(UHapticFeedbackEffect_Base* HapticEffect, float Intensity)
+void ADVRMotionController::PlayHapticEffect(UHapticFeedbackEffect_Base* HapticEffect, float Intensity) const
 {
 	if (HapticEffect && OwnerVRPlayerCharacter)
 	{
-		APlayerController* MyController = Cast<APlayerController>(OwnerVRPlayerCharacter->GetController());
-		if (MyController)
+		if (APlayerController* MyController = Cast<APlayerController>(OwnerVRPlayerCharacter->GetController()))
 		{
 			MyController->PlayHapticEffect(HapticEffect, MotionControllerComp->GetTrackingSource());//, Intensity);
 		}
@@ -191,8 +194,7 @@ bool ADVRMotionController::TryAttachOverlappedActorToPhysicsHandle()
 {
 	if (PhysicsConstraintComp && PreviousOverlappedPhysicsActor)
 	{
-		UPrimitiveComponent* OverlappingPhysicsActorRoot = Cast<UPrimitiveComponent>(PreviousOverlappedPhysicsActor->GetRootComponent());
-		if (OverlappingPhysicsActorRoot)
+		if (UPrimitiveComponent* OverlappingPhysicsActorRoot = Cast<UPrimitiveComponent>(PreviousOverlappedPhysicsActor->GetRootComponent()))
 		{
 			PhysicsConstraintComp->SetConstrainedComponents(InteractionSphereComp, NAME_None, OverlappingPhysicsActorRoot, NAME_None);
 			CurrentGrabedActor = PreviousOverlappedPhysicsActor;
@@ -207,8 +209,7 @@ bool ADVRMotionController::TryAttachOverlappedActorToPhysicsHandle()
 void ADVRMotionController::AlertGrabbedActorOfGrabState(EGrabState State) const
 {
 	// If grabbed actor was of type ADInteractableActor alert Actor is was grabbed
-	ADInteractableActor* InteractableActor = Cast<ADInteractableActor>(CurrentGrabedActor);
-	if (InteractableActor)
+	if (ADInteractableActor* InteractableActor = Cast<ADInteractableActor>(CurrentGrabedActor))
 	{
 		if (State == EGrabState::EGS_Grab)
 		{
@@ -252,8 +253,8 @@ bool ADVRMotionController::FindTeleportDestination(TArray<FVector>& OutPath, FVe
 {
 	if (MotionControllerComp)
 	{
-		FVector Start = MotionControllerComp->GetComponentLocation();
-		FVector LaunchVelocity = MotionControllerComp->GetForwardVector() * TeleportProjectileSpeed;
+		const FVector Start = MotionControllerComp->GetComponentLocation();
+		const FVector LaunchVelocity = MotionControllerComp->GetForwardVector() * TeleportProjectileSpeed;
 
 		TArray<AActor*> IgnoreActors;
 		SetIgnoreActorsForTeleportDestination(IgnoreActors);
@@ -293,16 +294,16 @@ bool ADVRMotionController::FindTeleportDestination(TArray<FVector>& OutPath, FVe
 }
 
 
-void ADVRMotionController::SetIgnoreActorsForTeleportDestination(TArray<AActor*>& IgnoreActors)
+void ADVRMotionController::SetIgnoreActorsForTeleportDestination(TArray<AActor*>& OutIgnoreActors)
 {
-	IgnoreActors.Add(this);
+	OutIgnoreActors.Add(this);
 	if (CurrentGrabedActor)
 	{
-		IgnoreActors.Add(CurrentGrabedActor);
+		OutIgnoreActors.Add(CurrentGrabedActor);
 	}
 	if (OtherHandMotionController && OtherHandMotionController->IsGrabbingActor())
 	{
-		IgnoreActors.Add(OtherHandMotionController->GetCurrentGrabbedActor());
+		OutIgnoreActors.Add(OtherHandMotionController->GetCurrentGrabbedActor());
 	}
 }
 
@@ -315,12 +316,12 @@ void ADVRMotionController::SetTeleportSplineMeshComponents(const TArray<FVector>
 		UpdateTeleportSpline(Path);
 
 		// Hide all SplineMeshComponents in object pool
-		for (auto SplineMesh : TeleportMeshObjectPool)
+		for (auto& SplineMesh : TeleportMeshObjectPool)
 		{
 			SplineMesh->SetVisibility(false);
 		}
 
-		int32 SegmentNumber = Path.Num() - 1;
+		const int32 SegmentNumber = Path.Num() - 1;
 		for (int32 i = 0; i < SegmentNumber; ++i)
 		{
 			// create a new SplineMeshComponent if there are not enough in TeleportMeshObjectPool
@@ -363,7 +364,7 @@ void ADVRMotionController::UpdateTeleportSpline(const TArray<FVector>& Path)
 		// Add points from the teleport projectile prediction path to TeleportSplinePath
 		for (int32 i = 0; i < Path.Num(); ++i)
 		{
-			FVector LocalPosition = TeleportSplinePath->GetComponentTransform().InverseTransformPosition(Path[i]);
+			const FVector LocalPosition = TeleportSplinePath->GetComponentTransform().InverseTransformPosition(Path[i]);
 			FSplinePoint Point(i, LocalPosition, ESplinePointType::Curve);
 			TeleportSplinePath->AddPoint(Point, false);
 		}
@@ -380,11 +381,11 @@ void ADVRMotionController::ClearTeleportPath()
 }
 
 
-void ADVRMotionController::ShowTeleportDestination(bool Show)
+void ADVRMotionController::ShowTeleportDestination(bool bShow)
 {
 	if (TeleportDestinationMarker)
 	{
-		TeleportDestinationMarker->SetVisibility(Show, true);
+		TeleportDestinationMarker->SetVisibility(bShow, true);
 	}
 }
 
@@ -419,6 +420,9 @@ bool ADVRMotionController::GetCurrentTeleportDestinationMarketLocation(FVector& 
 /*******************************************************************/
 void ADVRMotionController::SetHand(EControllerHand Hand)
 {
+	// EControllerHand contains many values, only left and right are valid for this class
+	check(Hand == EControllerHand::Left || Hand == EControllerHand::Right);
+
 	if (MotionControllerComp)
 	{
 		ControllerHand = Hand;
@@ -429,7 +433,7 @@ void ADVRMotionController::SetHand(EControllerHand Hand)
 			MeshComp->SetWorldScale3D(FVector(HandScale, HandScale, -HandScale));
 			MeshComp->SetRelativeRotation(FRotator(0.f, 0.f, -270.f));
 		}
-		else
+		else if (ControllerHand == EControllerHand::Right)
 		{
 			MeshComp->SetWorldScale3D(FVector(HandScale));
 			MeshComp->SetRelativeRotation(FRotator(0.f, 0.f, 90.f));
@@ -470,8 +474,7 @@ void ADVRMotionController::Grab()
 	{
 		GrabState = EGrabState::EGS_Grab;
 
-		bool AttachSuccess = TryAttachOverlappedActorToPhysicsHandle();
-		if (AttachSuccess)
+		if (const bool bAttachSuccess = TryAttachOverlappedActorToPhysicsHandle())
 		{
 			AlertGrabbedActorOfGrabState(EGrabState::EGS_Grab);
 
@@ -506,7 +509,7 @@ void ADVRMotionController::Release()
 }
 
 
-void ADVRMotionController::TriggerPulled()
+void ADVRMotionController::TriggerPulled() const
 {
 	if (ControllerMode == EControllerMode::ECM_UI && WidgetInteractionComp)
 	{
@@ -515,7 +518,7 @@ void ADVRMotionController::TriggerPulled()
 }
 
 
-void ADVRMotionController::TriggerReleased()
+void ADVRMotionController::TriggerReleased() const
 {
 	if (ControllerMode == EControllerMode::ECM_UI && WidgetInteractionComp)
 	{

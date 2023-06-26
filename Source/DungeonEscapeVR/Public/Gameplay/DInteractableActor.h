@@ -21,10 +21,30 @@ class DUNGEONESCAPEVR_API ADInteractableActor : public AActor
 {
 	GENERATED_BODY()
 	
+public:
 
-/**
- * Members
- */
+	// Sets default values for this actor's properties
+	ADInteractableActor();
+
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
+	/*******************************************************************/
+	/* Player Interaction */
+	/*******************************************************************/
+
+	/** Place actor in picked up state. */
+	virtual void GrabActor();
+
+	/** Release actor for picked up state. */
+	virtual void ReleaseActor();
+
+	/** 
+	 * Get picked up state
+	 * @returns true if actor is picked up
+	 */
+	bool GetIsPickedUp() const { return bIsPickedUp; }
+
 
 private:
 
@@ -44,8 +64,9 @@ private:
 	/* Configuration */
 	/*******************************************************************/
 
+	/** Weight using for gameplay  */
 	UPROPERTY(EditAnywhere, Category = "Config", meta = (ClampMin = "0.0", UIMin = "0.0"))
-	float Weight;
+	float Weight = 100.f;
 
 
 	/*******************************************************************/
@@ -75,10 +96,7 @@ private:
 
 public:
 
-	ADInteractableActor();
-
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	
 
 protected:
 
@@ -91,19 +109,11 @@ private:
 	void BindPlayerPawnTeleportEvents();
 
 
-	/*******************************************************************/
-	/* Interaction */
-	/*******************************************************************/
+
 
 public:
 
-	/** Call when this Actors is picked up. See DVRMotionController. This Actor will be attached to DVRMotionController physics handle */
-	virtual void GrabActor();
 
-	/** Call when this Actors is released. See DVRMotionController. This Actor will be released from DVRMotionController physics handle */
-	virtual void ReleaseActor();
-
-	bool GetIsPickedUp() const { return bIsPickedUp; }
 
 
 	/*******************************************************************/
