@@ -295,7 +295,7 @@ private:
 	 * @param OutPath		points along predict projectile path
 	 * @param OutLocation	Collision location of predict projectile path
 	 * 
-	 * return				Valid teleport destination found
+	 * @return				Valid teleport destination found
 	 */
 	UFUNCTION()
 	bool FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation);
@@ -336,8 +336,10 @@ private:
 	/** Set MeshComp to MotionControllerComp location. Movement is swept to location.  */
 	void UpdateMotionControllerTransform();
 
-	/** Update GrabState state for overlapping physics actors */
-	void UpdateGrabState(AActor* CurrentOverlappedPhysicsActor);
+	/** Update GrabState state for overlapping physics actors
+	 * @param bIsOverlappingActorToGrab is there an actor currently overlapping InteractionSphereComp
+	 */
+	void UpdateGrabState(bool bIsOverlappingActorToGrab);
 
 	/** Play haptic, player feedback, on motion controller */
 	void PlayHapticEffect(UHapticFeedbackEffect_Base* HapticEffect, float Intensity = 1.f) const;

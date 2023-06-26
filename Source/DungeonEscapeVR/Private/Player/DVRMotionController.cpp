@@ -125,7 +125,8 @@ void ADVRMotionController::UpdateInteractionWithOverlappingActors()
 		PlayHapticEffect(CanPickupHapticEffect);
 	}
 
-	UpdateGrabState(CurrentOverlappedPhysicsActor);
+	const bool bIsOverlappingGrabableActor = CurrentOverlappedPhysicsActor != nullptr;
+	UpdateGrabState(bIsOverlappingGrabableActor);
 
 	PreviousOverlappedPhysicsActor = CurrentOverlappedPhysicsActor;
 }
@@ -174,12 +175,12 @@ void ADVRMotionController::PlayHapticEffect(UHapticFeedbackEffect_Base* HapticEf
 }
 
 
-void ADVRMotionController::UpdateGrabState(AActor* CurrentOverlappedPhysicsActor)
+void ADVRMotionController::UpdateGrabState(bool bIsOverlappingActorToGrab)
 {
 	// state EGS_Grab is set from player input, see Grab()
 	if (GrabState == EGrabState::EGS_Grab) return;
 
-	if (CurrentOverlappedPhysicsActor)
+	if (bIsOverlappingActorToGrab)
 	{
 		GrabState = EGrabState::EGS_CanGrab;
 	}
@@ -198,11 +199,10 @@ bool ADVRMotionController::TryAttachOverlappedActorToPhysicsHandle()
 		{
 			PhysicsConstraintComp->SetConstrainedComponents(InteractionSphereComp, NAME_None, OverlappingPhysicsActorRoot, NAME_None);
 			CurrentGrabedActor = PreviousOverlappedPhysicsActor;
-			return true;
 		}
 	}
 
-	return false;
+	return CurrentGrabedActor == PreviousOverlappedPhysicsActor;
 }
 
 
