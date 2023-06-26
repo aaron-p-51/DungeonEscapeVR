@@ -26,6 +26,15 @@ public:
 	// Sets default values for this actor's properties
 	ADEscapeSuccessVolume();
 
+	/** Show widget for player to decide to quit or travel to main menu */
+	void ShowSuccessWidget();
+
+	/** Inform GameMode player has entered the success escape volume (BoxComp) BoxComp */
+	void InformGameModeEscapeSuccess();
+
+	/** Inform GameMode player has left the success escape volume (BoxComp), after successfully escaping */
+	void InformGameModePlayerLeftEscapeArea();
+
 protected:
 
 	// Called when the game starts or when spawned
@@ -55,14 +64,5 @@ private:
 	void OnBoxCompBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	UFUNCTION()
 	void OnBoxCompEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
-	/** Show widget for player to decide to quit or travel to main menu */
-	void ShowSuccessWidget();
-
-	/** Inform GameMode player has entered the success escape volume (BoxComp) BoxComp */
-	void InformGameModeEscapeSuccess();
-
-	/** Inform GameMode player has left the success escape volume (BoxComp), after successfully escaping */
-	void InformGameModePlayerLeftEscapeArea();
 
 };
