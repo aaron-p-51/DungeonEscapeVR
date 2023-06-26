@@ -51,6 +51,9 @@ public:
 	/* Called every frame */
 	virtual void Tick(float DeltaTime) override;
 
+	/** Return mass of all physics actors placed on all instances of ADCellDoorTrigger stored in CellDoorTriggers */
+	float CalculateTotalWeightOnTriggers() const;
+
 
 protected:
 
@@ -104,9 +107,6 @@ private:
 
 	/** Check the current weight on all triggers and current CellDoorState. Calls functions to Open/Close cell door if conditions are met */
 	void ProcessDoorOpenCloseState();
-
-	/** Return mass of all physics actors placed on all instances of ADCellDoorTrigger stored in CellDoorTriggers */
-	float CalculateTotalWeightOnTriggers() const;
 
 	/**
 	 * Start process of opening cell door. This function is called internally when the weight on all CellDoorTriggeres exceeds WeightToOpenCell. 
