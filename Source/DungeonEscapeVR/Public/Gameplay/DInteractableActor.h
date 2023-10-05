@@ -21,10 +21,48 @@ class DUNGEONESCAPEVR_API ADInteractableActor : public AActor
 {
 	GENERATED_BODY()
 	
+public:
 
-/**
- * Members
- */
+	// Sets default values for this actor's properties
+	ADInteractableActor();
+
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
+	/*******************************************************************/
+	/* Player Interaction */
+	/*******************************************************************/
+
+	/** Place actor in picked up state. */
+	virtual void GrabActor();
+
+	/** Release actor for picked up state. */
+	virtual void ReleaseActor();
+
+	/** 
+	 * Get picked up state
+	 * @returns true if actor is picked up
+	 */
+	bool GetIsPickedUp() const { return bIsPickedUp; }
+
+	/** Set MeshComp outline visibility. Outline is achieved via setting CustomDepthStencile values.  */
+	void SetEnableMeshCompOutline(bool Enable);
+
+	/**
+     *  Check to see if InteractionAlertTrigger has line of sight to this Actor.
+     *  InteractionAlertTrigger will be set from OnInteractionAlertSphereCompBeginOverlap and OnInteractionAlertSphereCompEndOverlap
+     */
+	bool UnobstructedViewToInteractionAlertTrigger() const;
+
+	/** Get the InteractionAlertTrigger. Will be set when overlapping with InteractionAlertSphereComp */
+	UPrimitiveComponent* GetInteractionAlertTrigger() const { return InteractionAlertTrigger; }
+
+
+protected:
+
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
 
 private:
 
@@ -44,8 +82,9 @@ private:
 	/* Configuration */
 	/*******************************************************************/
 
+	/** Weight using for gameplay  */
 	UPROPERTY(EditAnywhere, Category = "Config", meta = (ClampMin = "0.0", UIMin = "0.0"))
-	float Weight;
+	float Weight = 100.f;
 
 
 	/*******************************************************************/
@@ -68,42 +107,10 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "State|Interaction")
 	bool bIsPickedUp;
 
-
-/**
- * Methods
- */
-
-public:
-
-	ADInteractableActor();
-
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
-protected:
-
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
 private:
 
 	/** Setup. Player teleport state will determine if MeshComp outlines are shown. See OnPlayerBeginTeleport, and OnPlayerFinishTeleport */
 	void BindPlayerPawnTeleportEvents();
-
-
-	/*******************************************************************/
-	/* Interaction */
-	/*******************************************************************/
-
-public:
-
-	/** Call when this Actors is picked up. See DVRMotionController. This Actor will be attached to DVRMotionController physics handle */
-	virtual void GrabActor();
-
-	/** Call when this Actors is released. See DVRMotionController. This Actor will be released from DVRMotionController physics handle */
-	virtual void ReleaseActor();
-
-	bool GetIsPickedUp() const { return bIsPickedUp; }
 
 
 	/*******************************************************************/
@@ -126,17 +133,7 @@ private:
 	UFUNCTION()
 	void OnPlayerFinishTeleport();
 
-	/**
-	 *  Check to see if InteractionAlertTrigger has line of sight to this Actor.
-	 *  InteractionAlertTrigger will be set from OnInteractionAlertSphereCompBeginOverlap and OnInteractionAlertSphereCompEndOverlap
-	 */
-	bool UnobstructedViewToInteractionAlertTrigger() const;
-
-	/** Determine of MeshComp outline should be shown */
+	/** Determine if MeshComp outline should be shown */
 	void ProcessShowMeshOutline();
-
-	/** Set MeshComp outline visibility. Outline is achieved via setting CustomDepthStencile values.  */
-	void SetEnableMeshCompOutline(bool Enable);
-
 
 };

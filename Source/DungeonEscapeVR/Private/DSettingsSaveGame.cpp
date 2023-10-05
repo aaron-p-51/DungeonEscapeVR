@@ -3,6 +3,16 @@
 
 #include "DSettingsSaveGame.h"
 
+
+// Min and Max volume settings values
+const float MIN_VOLUME_SETTING = 0.f;
+const float MAX_VOLUME_SETTING = 1.f;
+
+// Min and Max texture resolution values
+const int32 MIN_RESOLUTION_SETTING = 0;
+const int32 MAX_RESOLUTION_SETTING = 100;
+
+
 const TMap<FString, FString> UDSettingsSaveGame::AntiAliasingMap =
 {
 	{"Low", "0"},
@@ -61,43 +71,42 @@ UDSettingsSaveGame::UDSettingsSaveGame()
 
 void UDSettingsSaveGame::SetMasterVolume(float Value)
 {
-	Value = FMath::Clamp<float>(Value, 0.f, 1.f);
+	Value = ClampAudioRange(Value);
 	SettingsData.MasterVolume = Value;
 }
 
 
 void UDSettingsSaveGame::SetAmbientVolume(float Value)
 {
-	Value = FMath::Clamp<float>(Value, 0.f, 1.f);
+	Value = ClampAudioRange(Value);
 	SettingsData.AmbientVolume = Value;
 }
 
 
 void UDSettingsSaveGame::SetEffectsVolume(float Value)
 {
-	Value = FMath::Clamp<float>(Value, 0.f, 1.f);
+	Value = ClampAudioRange(Value);
 	SettingsData.EffectsVolume = Value;
 }
 
 
 void UDSettingsSaveGame::SetUIVolume(float Value)
 {
-	Value = FMath::Clamp<float>(Value, 0.f, 1.f);
+	Value = ClampAudioRange(Value);
 	SettingsData.UIVolume = Value;
 }
 
 
 void UDSettingsSaveGame::ResolutionScale(int32 Value)
 {
-	Value = FMath::Clamp<int32>(Value, 0, 100);
+	Value = FMath::Clamp<int32>(Value, MIN_RESOLUTION_SETTING, MAX_RESOLUTION_SETTING);
 	SettingsData.ResolutionScale = Value;
 }
 
 
 void UDSettingsSaveGame::SetAntiAliasing(const FString& AntiAliasingSetting)
 {
-	const FString* AntiAliasingValue = UDSettingsSaveGame::AntiAliasingMap.Find(AntiAliasingSetting);
-	if (AntiAliasingValue)
+	if (const FString* AntiAliasingValue = UDSettingsSaveGame::AntiAliasingMap.Find(AntiAliasingSetting))
 	{
 		SettingsData.AntiAliasing = *AntiAliasingValue;
 	}
@@ -106,8 +115,7 @@ void UDSettingsSaveGame::SetAntiAliasing(const FString& AntiAliasingSetting)
 
 void UDSettingsSaveGame::SetShadows(const FString& ShadowsSetting)
 {
-	const FString* ShadowsValue = UDSettingsSaveGame::ShadowsMap.Find(ShadowsSetting);
-	if (ShadowsValue)
+	if (const FString* ShadowsValue = UDSettingsSaveGame::ShadowsMap.Find(ShadowsSetting))
 	{
 		SettingsData.Shadows = *ShadowsValue;
 	}
@@ -116,9 +124,14 @@ void UDSettingsSaveGame::SetShadows(const FString& ShadowsSetting)
 
 void UDSettingsSaveGame::SetTextures(const FString& TexturesSetting)
 {
-	const FString* TexturesValue = UDSettingsSaveGame::TexturesMap.Find(TexturesSetting);
-	if (TexturesValue)
+	if (const FString* TexturesValue = UDSettingsSaveGame::TexturesMap.Find(TexturesSetting))
 	{
 		SettingsData.Textures = *TexturesValue;
 	}
+}
+
+
+float UDSettingsSaveGame::ClampAudioRange(float Value) const
+{
+	return FMath::Clamp<float>(Value, MIN_VOLUME_SETTING, MAX_VOLUME_SETTING);
 }

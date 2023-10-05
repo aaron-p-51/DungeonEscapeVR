@@ -49,8 +49,7 @@ void ADEscapeSuccessVolume::BeginPlay()
 
 void ADEscapeSuccessVolume::OnBoxCompBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	ADVRPlayerCharacter* PlayerCharacter = Cast<ADVRPlayerCharacter>(OtherActor);
-	if (PlayerCharacter)
+	if (ADVRPlayerCharacter* PlayerCharacter = Cast<ADVRPlayerCharacter>(OtherActor))
 	{
 		ShowSuccessWidget();
 		InformGameModeEscapeSuccess();
@@ -60,8 +59,7 @@ void ADEscapeSuccessVolume::OnBoxCompBeginOverlap(UPrimitiveComponent* Overlappe
 
 void ADEscapeSuccessVolume::OnBoxCompEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	ADVRPlayerCharacter* PlayerCharacter = Cast<ADVRPlayerCharacter>(OtherActor);
-	if (PlayerCharacter)
+	if (ADVRPlayerCharacter* PlayerCharacter = Cast<ADVRPlayerCharacter>(OtherActor))
 	{
 		InformGameModePlayerLeftEscapeArea();
 	}
@@ -70,8 +68,7 @@ void ADEscapeSuccessVolume::OnBoxCompEndOverlap(UPrimitiveComponent* OverlappedC
 
 void ADEscapeSuccessVolume::InformGameModeEscapeSuccess()
 {
-	ADGameModeBase* GameMode = Cast<ADGameModeBase>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (GameMode)
+	if (ADGameModeBase* GameMode = Cast<ADGameModeBase>(UGameplayStatics::GetGameMode(GetWorld())))
 	{
 		GameMode->PlayerEscapeSuccess();
 	}
@@ -80,8 +77,7 @@ void ADEscapeSuccessVolume::InformGameModeEscapeSuccess()
 
 void ADEscapeSuccessVolume::InformGameModePlayerLeftEscapeArea()
 {
-	ADGameModeBase* GameMode = Cast<ADGameModeBase>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (GameMode)
+	if (ADGameModeBase* GameMode = Cast<ADGameModeBase>(UGameplayStatics::GetGameMode(GetWorld())))
 	{
 		GameMode->PlayerLeftEscapeSuccessArea();
 	}

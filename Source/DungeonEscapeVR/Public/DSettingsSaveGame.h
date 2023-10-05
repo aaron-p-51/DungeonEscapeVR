@@ -40,22 +40,12 @@ struct FSettingsData
 };
 
 /**
- * 
+ * Audio and video settings stored in save game state
  */
 UCLASS()
 class DUNGEONESCAPEVR_API UDSettingsSaveGame : public USaveGame
 {
 	GENERATED_BODY()
-
-/**
- * Members
- */
-
-private:
-
-	UPROPERTY()
-	FSettingsData SettingsData;
-	
 
 public:
 
@@ -64,12 +54,6 @@ public:
 	static const TMap<FString, FString> ShadowsMap;
 	static const TMap<FString, FString> TexturesMap;
 
-
-/**
- * Methods
- */
-
-public:
 
 	/** Set default settings. Lowest possible graphics settings, and 50 percent for all volume settings */
 	UDSettingsSaveGame();
@@ -95,5 +79,13 @@ public:
 	FString GetShadows() const { return SettingsData.Shadows; }
 	FString GetTextures() const { return SettingsData.Textures; }
 
+
+private:
+
+	UPROPERTY()
+	FSettingsData SettingsData;
+
+	/** Clamp value between valid values for audio settings */
+	float ClampAudioRange(float Value) const;
 
 };

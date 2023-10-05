@@ -10,7 +10,10 @@
 
 
 // Game Includes
+#include "../DungeonEscapeVR.h"
 #include "Gameplay/DInteractableActor.h"
+
+
 
 
 // Sets default values
@@ -21,6 +24,10 @@ ADCellDoorTrigger::ADCellDoorTrigger()
 
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(GetRootComponent());
+	MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	MeshComp->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+	MeshComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+	MeshComp->SetCollisionResponseToChannel(ECC_VRController, ECollisionResponse::ECR_Overlap);
 
 	BoxComp = CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerArea"));
 	BoxComp->SetupAttachment(GetRootComponent());
@@ -50,6 +57,7 @@ float ADCellDoorTrigger::GetWeightOnTrigger() const
 	// Add together weight of all CellDoorKeys
 	for (const auto& Key : CellDoorKeys)
 	{
+		// Do not include keys if they are pickup up by the player regardless if key is in CellDoorKeys TArray 
 		if (!Key->GetIsPickedUp())
 		{
 			UPrimitiveComponent* PrimativeComp = Key->FindComponentByClass<UPrimitiveComponent>();
@@ -68,6 +76,7 @@ void ADCellDoorTrigger::OnBoxCompBeginOverlap(UPrimitiveComponent* OverlappedCom
 {
 	if (OtherActor)
 	{
+		// if overlapping actor is as ADInteractableActor with matching CellDoorKeyTag and is not already in CellDoorKeys array, add to CellDoorKeys
 		ADInteractableActor* InteractableActor = Cast<ADInteractableActor>(OtherActor);
 		if (InteractableActor && InteractableActor->ActorHasTag(CellDoorKeyTag) && !CellDoorKeys.Contains(InteractableActor))
 		{
@@ -88,4 +97,3 @@ void ADCellDoorTrigger::OnBoxCompEndOverlap(UPrimitiveComponent* OverlappedCompo
 		}
 	}
 }
-

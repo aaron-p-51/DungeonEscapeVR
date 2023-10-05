@@ -21,24 +21,21 @@ void ADVRPlayerController::BeginPlay()
 
 	VRPlayerCharacter = GetPawn<ADVRPlayerCharacter>();
 
-	GetPauseMenuLocation();
+	bLevelHasPauseLocation = GetPauseMenuLocation();
 
 	PauseMenuLayoutActor = FindFirstActorWithTag(PauseMenuLayoutActorTag);
 }
 
 
-void ADVRPlayerController::GetPauseMenuLocation()
+bool ADVRPlayerController::GetPauseMenuLocation()
 {
-	AActor* Actor = FindFirstActorWithTag(PlayerPauseLocationActorTag);
-	if (Actor)
+	if (AActor* Actor = FindFirstActorWithTag(PlayerPauseLocationActorTag))
 	{
 		PlayerPauseMenuLocation = Actor->GetActorLocation();
-		LevelHasPauseLocation = true;
+		return true;
 	}
-	else
-	{
-		LevelHasPauseLocation = false;
-	}
+
+	return false;
 }
 
 
@@ -64,7 +61,7 @@ void ADVRPlayerController::SetupInputComponent()
 
 void ADVRPlayerController::PauseGame()
 {
-	if (LevelHasPauseLocation && !UGameplayStatics::IsGamePaused(GetWorld()) && VRPlayerCharacter)
+	if (bLevelHasPauseLocation && !UGameplayStatics::IsGamePaused(GetWorld()) && VRPlayerCharacter)
 	{
 		float VRPlayerCharacterYaw = VRPlayerCharacter->GetPlayerViewRotation().Yaw;
 		if (PauseMenuLayoutActor)
@@ -127,7 +124,7 @@ void ADVRPlayerController::PlayerCharacterInPauseMenu(bool Value)
 /*******************************************************************/
 /* Helper functions */
 /*******************************************************************/
-AActor* ADVRPlayerController::FindFirstActorWithTag(FName Tag)
+AActor* ADVRPlayerController::FindFirstActorWithTag(const FName& Tag) const
 {
 	TArray<AActor*> FoundActors;
 	UGameplayStatics::GetAllActorsWithTag(GetWorld(), Tag, FoundActors);

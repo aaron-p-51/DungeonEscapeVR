@@ -31,8 +31,15 @@ ADVRPlayerCharacter::ADVRPlayerCharacter()
 	CameraCollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("CameraCollisionComp"));
 	CameraCollisionComp->SetupAttachment(VRCenter);
 	CameraCollisionComp->SetSphereRadius(45.f);
+	CameraCollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	DegreesOnTurn = 45.f;
+	CameraCollisionCheckRate = 0.2f;
+	TeleportCamerFadeOutTime = 0.25f;
+	CameraCollisionFadeRate = 1.25f;
+
+	CameraCollisionState = ECameraCollisionState::ECCS_NotFading;
+
 	bTeleportInProgress = false;
 }
 
@@ -58,12 +65,10 @@ void ADVRPlayerCharacter::BeginPlay()
 	}
 
 	// Cache PlayerCameraManager
-	APlayerController* PlayerController = Cast<APlayerController>(GetController());
-	if (PlayerController)
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		PlayerCameraManager = PlayerController->PlayerCameraManager;
 	}
-	
 }
 
 
@@ -111,7 +116,7 @@ void ADVRPlayerCharacter::SpawnMotionControllers()
 void ADVRPlayerCharacter::SetUIModeActive(bool Active)
 {
 	bUIModeActive = Active;
-	EControllerMode ControllerMode = Active ? EControllerMode::ECM_UI : EControllerMode::ECM_Game;
+	const EControllerMode ControllerMode = Active ? EControllerMode::ECM_UI : EControllerMode::ECM_Game;
 	
 	if (RightMotionController)
 	{
@@ -129,18 +134,51 @@ void ADVRPlayerCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	AlignRootToVRRoot();
+
+	if (CameraCollisionState != ECameraCollisionState::ECCS_NotFading)
+	{
+		CameraCollisionFade(DeltaTime);
+	}
 }
+
 
 
 void ADVRPlayerCharacter::AlignRootToVRRoot()
 {
 	if (CameraComp && VRCenter && !bInPauseMenu && !bTeleportInProgress)
 	{
-		//Align Root component to VRRoot, (room scaling)
+		// Align Root component to VRRoot, (room scaling)
+		// displacement of camera (HMD) from root component
 		FVector NewCameraOffset = CameraComp->GetComponentLocation() - GetActorLocation();
 		NewCameraOffset.Z = 0.f;
 		AddActorWorldOffset(NewCameraOffset, true);
+
+		// move VRCenter back to its position before camera movement
 		VRCenter->AddWorldOffset(-NewCameraOffset);
+	}
+}
+
+void ADVRPlayerCharacter::CameraCollisionFade(float DeltaTime)
+{
+	if (CameraCollisionState == ECameraCollisionState::ECCS_FadeOut)
+	{
+		CollisionCameraFadeAmount += DeltaTime * CameraCollisionFadeRate;
+	}
+	else if (CameraCollisionState == ECameraCollisionState::ECCS_FadeIn)
+	{
+		CollisionCameraFadeAmount -= DeltaTime * CameraCollisionFadeRate;
+	}
+
+	CollisionCameraFadeAmount = FMath::Clamp(CollisionCameraFadeAmount, 0.f, 1.f);
+
+	if (PlayerCameraManager)
+	{
+		PlayerCameraManager->SetManualCameraFade(CollisionCameraFadeAmount, CameraCollisionFadeColor, false);
+	}
+
+	if (CollisionCameraFadeAmount <= 0.f || CollisionCameraFadeAmount >= 1.f)
+	{
+		CameraCollisionState = ECameraCollisionState::ECCS_NotFading;
 	}
 }
 
@@ -149,7 +187,7 @@ void ADVRPlayerCharacter::CheckForCameraCollision()
 {
 	if (CameraCollisionComp && CameraComp && !bTeleportInProgress && !bInPauseMenu)
 	{
-		// do not allow motion controllers to activate camera collision
+		// do not allow motion controllers or currently held objects to activate camera collision
 		TArray<AActor*> IgnoreActors;
 		IgnoreActors.Add(this);
 		if (LeftMotionController)
@@ -170,8 +208,8 @@ void ADVRPlayerCharacter::CheckForCameraCollision()
 		}
 
 		FHitResult HitResult;
-		FVector CurrentCameraLocation = CameraComp->GetComponentLocation();
-		bool Hit = UKismetSystemLibrary::SphereTraceSingle(
+		const FVector CurrentCameraLocation = CameraComp->GetComponentLocation();
+		bool bHit = UKismetSystemLibrary::SphereTraceSingle(
 			GetWorld(),
 			LastCameraCollisionCompLocation,
 			CurrentCameraLocation,
@@ -184,15 +222,15 @@ void ADVRPlayerCharacter::CheckForCameraCollision()
 			true
 		);
 
-		if (!bCameraCollisionOverlapping && Hit)
+		if (!bCameraCollisionOverlapping && bHit)
 		{
 			bCameraCollisionOverlapping = true;
-			BP_CollisionStartCameraFade();
+			CameraCollisionState = ECameraCollisionState::ECCS_FadeOut;
 		}
-		else if (bCameraCollisionOverlapping && !Hit)
+		else if (bCameraCollisionOverlapping && !bHit)
 		{
 			bCameraCollisionOverlapping = false;
-			BP_CollisionStopCameraFade();
+			CameraCollisionState = ECameraCollisionState::ECCS_FadeIn;
 		}
 
 		CameraCollisionComp->SetWorldLocation(CurrentCameraLocation);
@@ -349,7 +387,6 @@ void ADVRPlayerCharacter::FinishFindTeleportDestination()
 	if (LeftMotionController && bWantsToTeleport && !bInPauseMenu)
 	{
 		bWantsToTeleport = false;
-		FVector TeleportLocation;
 		bool ValidTeleportLocation = LeftMotionController->GetCurrentTeleportDestinationMarketLocation(DesiredTeleportLocation);
 		if (ValidTeleportLocation)
 		{
@@ -377,7 +414,7 @@ void ADVRPlayerCharacter::BeginTeleport(bool TeleportToPauseMenu)
 		TeleportTimeDelay = TeleportToPauseTime;
 		SetupTeleportToPauseMenuLocation();
 	}
-	// teleport from pause menu
+	// Teleport from pause menu
 	else if (bInPauseMenu && !TeleportToPauseMenu)
 	{
 		TeleportTimeDelay = TeleportToPauseTime;
@@ -394,7 +431,6 @@ void ADVRPlayerCharacter::BeginTeleport(bool TeleportToPauseMenu)
 
 	FTimerHandle TimerHandle_TeleportCameraFade;
 	GetWorldTimerManager().SetTimer(TimerHandle_TeleportCameraFade, this, &ADVRPlayerCharacter::FinishTeleport, TeleportTimeDelay, false);
-
 }
 
 
@@ -410,7 +446,6 @@ void ADVRPlayerCharacter::SetupTeleportToPauseMenuLocation()
 	FTimerHandle TimerHandle_Teleport;
 	GetWorldTimerManager().SetTimer(TimerHandle_Teleport, this, &ADVRPlayerCharacter::FinishTeleport, 0.2f, false);
 }
-
 
 	
 void ADVRPlayerCharacter::SetupTeleportFromPauseMenuLocation()
@@ -447,8 +482,7 @@ void ADVRPlayerCharacter::FinishTeleport()
 
 		OnPlayerFinishTeleport.Broadcast();
 
-		ADVRPlayerController* VRPlayerController = GetController<ADVRPlayerController>();
-		if (VRPlayerController)
+		if (ADVRPlayerController* VRPlayerController = GetController<ADVRPlayerController>())
 		{
 			VRPlayerController->PlayerCharacterInPauseMenu(bInPauseMenu);
 		}

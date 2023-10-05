@@ -15,30 +15,26 @@ class DUNGEONESCAPEVR_API ADGameModeBase : public AGameModeBase
 {
 	GENERATED_BODY()
 	
-/**
-* Members
-*/
-private:
+
+public:
+
+	/** returns player has reached the end of the dungeon */
+	bool GetPlayerEscaped() const { return bPlayerEscaped; }
+
+	/** Call when player has successfully escaped from the dungeon */
+	void PlayerEscapeSuccess();
+
+	/** Call when player has successfully escaped the dungeon but goes back into dungeon */
+	void PlayerLeftEscapeSuccessArea();
 
 	/** For all gate in the world to the open state */
 	UPROPERTY(EditAnywhere, Category = "Debug")
 	bool bForceAllCellDoorsOpen;
 
-public:
+	
+private:
 
+	/** Player has escaped. Will be set to true when PlayerEscapeSuccess is called. Will never be set back to false until level restarts */
 	bool bPlayerEscaped = false;
 
-/**
- * Methods
- */
-
-public:
-
-	bool GetForceAllCellDoorsOpen() const { return bForceAllCellDoorsOpen; }
-
-	/** Call when player has successfully escaped from the dungeon */
-	void PlayerEscapeSuccess();
-
-	/** Call when player has successfully escaped the dungeon but goes back int dungeon */
-	void PlayerLeftEscapeSuccessArea();
 };
