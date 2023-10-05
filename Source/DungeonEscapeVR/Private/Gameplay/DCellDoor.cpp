@@ -48,12 +48,11 @@ void ADCellDoor::BeginPlay()
 		InitialCellDoorHeight = CellDoorStaticMeshComp->GetComponentLocation().Z;
 	}
 
-#if WITH_EDITOR
+#if !UE_BUILD_SHIPPING
 
-	ADGameModeBase* GameModeBase = GetWorld()->GetAuthGameMode<ADGameModeBase>();
-	if (GameModeBase)
+	if (ADGameModeBase* GameModeBase = GetWorld()->GetAuthGameMode<ADGameModeBase>())
 	{
-		bGameModeForceAllGatesOpen = GameModeBase->GetForceAllCellDoorsOpen();
+		bGameModeForceAllGatesOpen = GameModeBase->bForceAllCellDoorsOpen;
 	}
 
 #endif
@@ -76,7 +75,7 @@ void ADCellDoor::ProcessDoorOpenCloseState()
 
 	float Weight = 0.f;
 
-#if WITH_EDITOR
+#if !UE_BUILD_SHIPPING
 
 	if (bGameModeForceAllGatesOpen || bDebugForceGateOpen)
 	{

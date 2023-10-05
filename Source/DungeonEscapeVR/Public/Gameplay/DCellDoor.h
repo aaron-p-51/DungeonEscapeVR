@@ -158,8 +158,6 @@ protected:
 	void OnFinishedCellDoorClosed();
 
 
-#if WITH_EDITOR
-
 	/*******************************************************************/
 	/* Debug */
 	/*******************************************************************/
@@ -173,7 +171,5 @@ private:
 	/** Force this cell door open regardless of weight applied to triggers */
 	UPROPERTY(EditAnywhere, Category = "Debug")
 	bool bDebugForceGateOpen;
-
-#endif
 
 };
