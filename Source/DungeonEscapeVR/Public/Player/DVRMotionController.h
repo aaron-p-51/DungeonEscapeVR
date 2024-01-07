@@ -173,6 +173,12 @@ public:
 	/** Set MeshComp to MotionControllerComp location. Movement is swept to location.  */
 	void UpdateMotionControllerTransform();
 
+	/** Update the spline showing UI interaction */
+	void UpdateUIInteractionSpline();
+
+	/** Get the ends of the UI interaction trace. */
+	void GetUIInteractionTraceEnds(FVector& Start, FVector& End) const;
+
 
 protected:
 
@@ -215,6 +221,15 @@ private:
 	/** Spline to show teleport projectile path */
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	USplineComponent* TeleportSplinePath;
+
+	/** Spline to show UI menu interaction */
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	USplineComponent* UIInteractionSpline;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	USplineMeshComponent* UIInteractionSplineMesh;
+
+
 
 
 	/*******************************************************************/
@@ -292,6 +307,10 @@ private:
 	UPROPERTY()
 	TArray<USplineMeshComponent*> TeleportMeshObjectPool;
 
+	/** Mesh placed along spline showing UI interaction selection */
+	UPROPERTY()
+	TArray<USplineMeshComponent*> UIInteractionSplineMeshObjectPool;
+
 	/** Current GrabState of this DVRMotionController */
 	UPROPERTY(VisibleAnywhere, Category = "State|Interaction")
 	EGrabState GrabState;
@@ -349,5 +368,10 @@ private:
 	 * @param bIsOverlappingActorToGrab is there an actor currently overlapping InteractionSphereComp
 	 */
 	void UpdateGrabState(bool bIsOverlappingActorToGrab);
+
+public:
+
+	static const int32 UIINTERACTION_START_INDEX;
+	static const int32 UIINTERACTION_END_INDEX;
 
 };

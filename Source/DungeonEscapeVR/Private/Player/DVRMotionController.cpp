@@ -17,11 +17,16 @@
 #include "MotionControllerComponent.h"
 #include "NavigationSystem.h"
 #include "PhysicsEngine/PhysicsConstraintComponent.h"
+#include "DrawDebugHelpers.h"
 
 
 // Game Includes
 #include "Gameplay/DInteractableActor.h"
 #include "Player/DVRPlayerCharacter.h"
+
+
+const int32 ADVRMotionController::UIINTERACTION_START_INDEX = 0;
+const int32 ADVRMotionController::UIINTERACTION_END_INDEX = 1;
 
 
 // Sets default values
@@ -57,9 +62,18 @@ ADVRMotionController::ADVRMotionController()
 
 	TeleportDestinationMarker = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TeleportDestinationMarker"));
 	TeleportDestinationMarker->SetupAttachment(GetRootComponent());
+	TeleportDestinationMarker->SetVisibility(false, true);
 
 	TeleportSplinePath = CreateDefaultSubobject<USplineComponent>(TEXT("TeleportSplinePath"));
 	TeleportSplinePath->SetupAttachment(GetRootComponent());
+
+	UIInteractionSpline = CreateDefaultSubobject<USplineComponent>(TEXT("UIInteractionSpline"));
+	UIInteractionSpline->SetupAttachment(GetRootComponent());
+
+	UIInteractionSplineMesh = CreateDefaultSubobject<USplineMeshComponent>(TEXT("UIInteractionSplineMesh"));
+	UIInteractionSplineMesh->SetupAttachment(UIInteractionSpline);
+	UIInteractionSplineMesh->SetMobility(EComponentMobility::Movable);
+	UIInteractionSplineMesh->SetVisibility(false, true);
 	
 	bLookForTeleportDestination = false;
 	TeleportProjectileRadius = 10.f;
@@ -77,11 +91,6 @@ void ADVRMotionController::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (TeleportDestinationMarker)
-	{
-		TeleportDestinationMarker->SetVisibility(false, true);
-	}
-
 	SetControllerMode(ControllerMode);
 }
 
@@ -92,11 +101,19 @@ void ADVRMotionController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	UpdateMotionControllerTransform();
-	UpdateInteractionWithOverlappingActors();
 
-	if (bLookForTeleportDestination)
+	if (ControllerMode == EControllerMode::ECM_UI)
 	{
-		UpdateTeleportDestination();
+		UpdateUIInteractionSpline();
+	}
+	else // ControllerMode == EControllerMode::ECM_Game
+	{
+		UpdateInteractionWithOverlappingActors();
+
+		if (bLookForTeleportDestination)
+		{
+			UpdateTeleportDestination();
+		}
 	}
 }
 
@@ -111,6 +128,56 @@ void ADVRMotionController::UpdateMotionControllerTransform()
 	if (MeshComp)
 	{
 		MeshComp->SetRelativeLocation(RelativeHandPositionOffset, true);
+	}
+}
+
+
+void ADVRMotionController::UpdateUIInteractionSpline()
+{
+	if (UIInteractionSpline)
+	{
+		UIInteractionSplineMesh->SetVisibility(false);
+
+		FVector InteractionTraceStart, InteractionTraceEnd;
+		GetUIInteractionTraceEnds(InteractionTraceStart, InteractionTraceEnd);
+
+		UIInteractionSpline->ClearSplinePoints(false);
+
+		// Add points to the spline. Points position is local to UIInteractionSpline. There are only two spline points, straight spline.
+		const FVector LocalStart = UIInteractionSpline->GetComponentTransform().InverseTransformPosition(InteractionTraceStart);
+		const FSplinePoint StartPoint(UIINTERACTION_START_INDEX, LocalStart, ESplinePointType::Linear);
+		UIInteractionSpline->AddPoint(StartPoint, false);
+
+		const FVector LocalEnd = UIInteractionSpline->GetComponentTransform().InverseTransformPosition(InteractionTraceEnd);
+		const FSplinePoint EndPoint(UIINTERACTION_END_INDEX, LocalEnd, ESplinePointType::Linear);
+		UIInteractionSpline->AddPoint(EndPoint, false);
+
+		UIInteractionSpline->UpdateSpline();
+
+		// Get new start and end position for the UIInteractionSpline
+		const FVector SplineStartPos = UIInteractionSpline->GetLocationAtSplinePoint(UIINTERACTION_START_INDEX, ESplineCoordinateSpace::Local);
+		const FVector SplineEndPos = UIInteractionSpline->GetLocationAtSplinePoint(UIINTERACTION_END_INDEX, ESplineCoordinateSpace::Local);
+		UIInteractionSplineMesh->SetStartAndEnd(SplineStartPos, FVector::ZeroVector, SplineEndPos, FVector::ZeroVector);
+		UIInteractionSplineMesh->SetVisibility(true, true);
+	}
+}
+
+
+void ADVRMotionController::GetUIInteractionTraceEnds(FVector& Start, FVector& End) const
+{
+	if (WidgetInteractionComp)
+	{
+		Start = MotionControllerComp->GetComponentLocation();
+		const FVector MaxEnd = Start + WidgetInteractionComp->GetForwardVector() * WidgetInteractionComp->InteractionDistance;
+
+		FHitResult Hit;
+		if (GetWorld()->LineTraceSingleByChannel(Hit, Start, MaxEnd, ECollisionChannel::ECC_Visibility))
+		{
+			End = Hit.Location;
+			return;
+		}
+
+		End = MaxEnd;
 	}
 }
 
@@ -365,7 +432,7 @@ void ADVRMotionController::UpdateTeleportSpline(const TArray<FVector>& Path)
 		for (int32 i = 0; i < Path.Num(); ++i)
 		{
 			const FVector LocalPosition = TeleportSplinePath->GetComponentTransform().InverseTransformPosition(Path[i]);
-			FSplinePoint Point(i, LocalPosition, ESplinePointType::Curve);
+			const FSplinePoint Point(i, LocalPosition, ESplinePointType::Curve);
 			TeleportSplinePath->AddPoint(Point, false);
 		}
 
@@ -444,24 +511,63 @@ void ADVRMotionController::SetHand(EControllerHand Hand)
 
 void ADVRMotionController::SetControllerMode(EControllerMode Mode)
 {
-	if (Mode == EControllerMode::ECM_UI)
+	if (WidgetInteractionComp && UIInteractionSplineMesh && UIInteractionSpline && InteractionSphereComp && TeleportDestinationMarker && TeleportSplinePath)
 	{
-		if (WidgetInteractionComp)
-		{
-			WidgetInteractionComp->SetActive(true);
-		}
+		WidgetInteractionComp->SetActive(Mode == EControllerMode::ECM_UI);
+		UIInteractionSplineMesh->SetActive(Mode == EControllerMode::ECM_UI);
+		UIInteractionSplineMesh->SetVisibility(Mode == EControllerMode::ECM_UI, true);
+		UIInteractionSpline->SetActive(Mode == EControllerMode::ECM_UI);
 
-		ControllerMode = EControllerMode::ECM_UI;
-	}
-	else // ECM_Game
-	{
-		if (WidgetInteractionComp)
-		{
-			WidgetInteractionComp->SetActive(false);
-		}
+		InteractionSphereComp->SetActive(Mode == EControllerMode::ECM_Game);
+		TeleportDestinationMarker->SetActive(Mode == EControllerMode::ECM_Game);
+		TeleportSplinePath->SetActive(Mode == EControllerMode::ECM_Game);
 
-		ControllerMode = EControllerMode::ECM_Game;
+		ControllerMode = Mode;
 	}
+
+
+	//	if (Mode == EControllerMode::ECM_UI)
+	//	{
+	//		WidgetInteractionComp->SetActive(true);
+	//		UIInteractionSplineMesh->SetActive(true);
+	//		UIInteractionSpline->SetActive(true);
+	//	}
+	//}
+
+	//if (Mode == EControllerMode::ECM_UI)
+	//{
+	//	if (WidgetInteractionComp && UIInteractionSplineMesh && UIInteractionSpline && InteractionSphereComp && TeleportDestinationMarker && TeleportSplinePath)
+	//	{
+	//		WidgetInteractionComp->SetActive(true);
+	//		UIInteractionSplineMesh->SetActive(true);
+	//		UIInteractionSpline->SetActive(true);
+
+	//	}
+
+	//	if (WidgetInteractionComp)
+	//	{
+	//		WidgetInteractionComp->SetActive(true);
+	//	}
+	//	if (UIInteractionSplineMesh)
+	//	{
+	//		UIInteractionSplineMesh->SetActive(false);
+	//	}
+	//	if (UIInteractionSpline)
+	//	{
+	//		UIInteractionSpline->SetActive(true);
+	//	}
+
+	//	ControllerMode = EControllerMode::ECM_UI;
+	//}
+	//else // ECM_Game
+	//{
+	//	if (WidgetInteractionComp)
+	//	{
+	//		WidgetInteractionComp->SetActive(false);
+	//	}
+
+	//	ControllerMode = EControllerMode::ECM_Game;
+	//}
 }
 
 
